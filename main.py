@@ -120,23 +120,36 @@ def add_album(yandex_token, album_path):
     )
 
 
-def upload_photos_to_yandex(yandex_token, ids_list_vk, album_id, album_path_vk: str, ids_list_inst=None, album_path_inst=None):
-    print('Идет загрузка фотографий из Вконтакте:')
-    add_album(yandex_token, album_path_vk)
-    users_photos_vk = get_photos_vk(ids_list_vk, album_id)
+def upload_photos_to_yandex(yandex_token):
+    socials_to_upload = input('Введите через пробел названия социальных сетей, откуда хотите загрузить фотографии'
+                              '\n(например, vk instagram): ')
+    if 'vk' in socials_to_upload:
+        print('\nЗагрузка фото из Вконтакте.')
+        ids_list_vk = input('Введите через пробел id пользователей: ').split()
+        album_id = input('Введите название альбома, откуда хотите загрузить фото. "profile" - фото профиля, "wall" - фото со стены: ')
+        album_path_vk = input('Укажите название новой папки на Яндекс.Диске, куда будут загружаться фото: ')
+        print('\nИдет загрузка фотографий из Вконтакте:')
 
-    for user_vk in users_photos_vk:
-        add_album(yandex_token, f"{album_path_vk}/{user_vk['user_name']}")
-        for photo in tqdm(user_vk['photos']):
-            requests.post(
-                'https://cloud-api.yandex.net/v1/disk/resources/upload',
-                headers={'Authorization': f'OAuth {yandex_token}'},
-                params={'path': f"disk:/{album_path_vk}/{user_vk['user_name']}/{photo['title']}.jpg",
-                        'url': photo['url']}
-            )
+        add_album(yandex_token, album_path_vk)
+        users_photos_vk = get_photos_vk(ids_list_vk, album_id)
 
-    if (ids_list_inst is not None) and (album_path_inst is not None):
+        for user_vk in users_photos_vk:
+            add_album(yandex_token, f"{album_path_vk}/{user_vk['user_name']}")
+            for photo in tqdm(user_vk['photos']):
+                requests.post(
+                    'https://cloud-api.yandex.net/v1/disk/resources/upload',
+                    headers={'Authorization': f'OAuth {yandex_token}'},
+                    params={'path': f"disk:/{album_path_vk}/{user_vk['user_name']}/{photo['title']}.jpg",
+                            'url': photo['url']}
+                )
+        print('\nЗагрузка завершена!')
+
+    if 'instagram' in socials_to_upload:
+        print('\nЗагрузка фото из Instagram.')
+        ids_list_inst = input('Введите через пробел id пользователей: ').split()
+        album_path_inst = input('Укажите название папки на Яндекс.Диске, куда будут загружаться фото: ')
         print('\nИдет загрузка постов из инстаграма:')
+
         users_photos_inst = get_photos_inst(ids_list_inst)
         add_album(yandex_token, album_path_inst)
 
@@ -149,10 +162,7 @@ def upload_photos_to_yandex(yandex_token, ids_list_vk, album_id, album_path_vk: 
                     params={'path': f"disk:/{album_path_inst}/{user_inst['user_name']}/{photo['title']}.{photo['extension']}",
                             'url': photo['url']}
                 )
-    print('\nЗагрузка завершена!')
+        print('\nЗагрузка завершена!')
 
 
-user_ids_vk = []
-user_ids_inst = []
-
-upload_photos_to_yandex(ya_token, user_ids_vk, 'profile', 'profile_photos_vk', user_ids_inst, 'instagram')
+upload_photos_to_yandex(ya_token)
