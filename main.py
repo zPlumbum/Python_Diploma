@@ -13,14 +13,14 @@ def write_to_file_json(file_name: str, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def get_photos_vk(ids_list_vk: list, album_id):
+def get_photos_vk(ids_list_vk: list, album_id, token=vk_token):
     users_photos_list = []
 
     for user_id in ids_list_vk:
         response_id = requests.get(
             'https://api.vk.com/method/users.get',
             params={
-                'access_token': vk_token,
+                'access_token': token,
                 'user_ids': user_id,
                 'v': 5.122
             }
@@ -30,7 +30,7 @@ def get_photos_vk(ids_list_vk: list, album_id):
         response_photos = requests.get(
             'https://api.vk.com/method/photos.get',
             params={
-                'access_token': vk_token,
+                'access_token': token,
                 'owner_id': user_id,
                 'album_id': album_id,
                 'rev': 1,
@@ -56,7 +56,7 @@ def get_photos_vk(ids_list_vk: list, album_id):
     return users_photos_list
 
 
-def get_photos_inst(ids_list_inst: list, max_count=10):
+def get_photos_inst(ids_list_inst: list, token=inst_token, max_count=10):
     users_photos_list = []
     count = 0
 
@@ -65,7 +65,7 @@ def get_photos_inst(ids_list_inst: list, max_count=10):
             f'https://graph.instagram.com/{user_id}',
             params={
                 'fields': 'username',
-                'access_token': inst_token
+                'access_token': token
             }
         )
         user_name = response_username.json()['username']
@@ -74,7 +74,7 @@ def get_photos_inst(ids_list_inst: list, max_count=10):
             f'https://graph.instagram.com/{user_id}/media',
             params={
                 'fields': 'username,media_type,media_url,timestamp,children{media_type,media_url,timestamp}',
-                'access_token': inst_token
+                'access_token': token
             }
         )
         photos_list = []
@@ -120,18 +120,41 @@ def add_album(yandex_token, album_path):
     )
 
 
-def upload_photos_to_yandex(yandex_token):
-    socials_to_upload = input('Введите через пробел названия социальных сетей, откуда хотите загрузить фотографии'
-                              '\n(например, vk instagram): ')
+def upload_photos_to_yandex():
+    yandex_token = ya_token
+    vkontakte_token = vk_token
+    while (vkontakte_token == '') or (yandex_token == ''):
+        print('Пожалуйста, введите токены "Вконтакте" и "Яндекс.Диска"')
+        if vkontakte_token == '':
+            vkontakte_token = input('Токен "Вконтакте": ')
+        if yandex_token == '':
+            yandex_token = input('Токен "Яндекс.Диска": ')
+        print()
+
+    socials_set = {'vk', 'instagram'}
+    socials_to_upload = set(input('Введите через пробел названия социальных сетей, откуда хотите загрузить фотографии'
+                                  '\n(например, vk instagram): ').split())
+    while not socials_to_upload.issubset(socials_set):
+        socials_to_upload = set(input('Вы ввели неверные данные. Пожалуйста, повторите попытку: ').split())
+
     if 'vk' in socials_to_upload:
         print('\nЗагрузка фото из Вконтакте.')
         ids_list_vk = input('Введите через пробел id пользователей: ').split()
-        album_id = input('Введите название альбома, откуда хотите загрузить фото. "profile" - фото профиля, "wall" - фото со стены: ')
-        album_path_vk = input('Укажите название новой папки на Яндекс.Диске, куда будут загружаться фото: ')
+        mode = input('Для быстрой загрузки введите - "0", для выбора настроек загрузки введите - "1": ')
+
+        while mode not in ['0', '1']:
+            mode = input('Вы ввели неверные данные, повторите попытку: ')
+        if mode == '0':
+            album_id = 'profile'
+            album_path_vk = 'profile-photos-vk'
+        elif mode == '1':
+            album_id = input('Введите название альбома, откуда хотите загрузить фото. "profile" - фото профиля, "wall" - фото со стены: ')
+            album_path_vk = input('Укажите название новой папки на Яндекс.Диске, куда будут загружаться фото: ')
+
         print('\nИдет загрузка фотографий из Вконтакте:')
 
         add_album(yandex_token, album_path_vk)
-        users_photos_vk = get_photos_vk(ids_list_vk, album_id)
+        users_photos_vk = get_photos_vk(ids_list_vk, album_id, vkontakte_token)
 
         for user_vk in users_photos_vk:
             add_album(yandex_token, f"{album_path_vk}/{user_vk['user_name']}")
@@ -142,15 +165,28 @@ def upload_photos_to_yandex(yandex_token):
                     params={'path': f"disk:/{album_path_vk}/{user_vk['user_name']}/{photo['title']}.jpg",
                             'url': photo['url']}
                 )
-        print('\nЗагрузка завершена!')
+        print('Загрузка завершена!')
 
     if 'instagram' in socials_to_upload:
+        instagram_token = inst_token
+        while instagram_token == '':
+            print('\nПожалуйста, введите токен "Instagram": ')
+            instagram_token = input('Токен "Instagram": ')
+
         print('\nЗагрузка фото из Instagram.')
         ids_list_inst = input('Введите через пробел id пользователей: ').split()
-        album_path_inst = input('Укажите название папки на Яндекс.Диске, куда будут загружаться фото: ')
+        mode = input('Для быстрой загрузки введите - "0", для выбора настроек загрузки введите - "1": ')
+
+        while mode not in ['0', '1']:
+            mode = input('Вы ввели неверные данные, повторите попытку: ')
+        if mode == '0':
+            album_path_inst = 'profile-photos-instagram'
+        elif mode == '1':
+            album_path_inst = input('Укажите название новой папки на Яндекс.Диске, куда будут загружаться фото: ')
+
         print('\nИдет загрузка постов из инстаграма:')
 
-        users_photos_inst = get_photos_inst(ids_list_inst)
+        users_photos_inst = get_photos_inst(ids_list_inst, instagram_token)
         add_album(yandex_token, album_path_inst)
 
         for user_inst in users_photos_inst:
@@ -162,7 +198,7 @@ def upload_photos_to_yandex(yandex_token):
                     params={'path': f"disk:/{album_path_inst}/{user_inst['user_name']}/{photo['title']}.{photo['extension']}",
                             'url': photo['url']}
                 )
-        print('\nЗагрузка завершена!')
+        print('Загрузка завершена!')
 
 
-upload_photos_to_yandex(ya_token)
+upload_photos_to_yandex()
