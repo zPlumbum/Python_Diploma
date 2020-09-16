@@ -8,6 +8,23 @@ ya_token = ''
 inst_token = ''
 
 
+def get_id_from_nickname(nickname_list, token=vk_token):
+    ids_list = []
+
+    for nickname in nickname_list:
+        response_nick = requests.get(
+            'https://api.vk.com/method/users.search',
+            params={
+                'access_token': token,
+                'q': nickname,
+                'v': 5.122
+            }
+        )
+        user_id = response_nick.json()['response']['items'][0]['id']
+        ids_list.append(user_id)
+    return ids_list
+
+
 def write_to_file_json(file_name: str, data):
     with open(file_name, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -139,7 +156,8 @@ def upload_photos_to_yandex():
 
     if 'vk' in socials_to_upload:
         print('\nЗагрузка фото из Вконтакте.')
-        ids_list_vk = input('Введите через пробел id пользователей: ').split()
+        nickname_list_vk = input('Введите через пробел id пользователей: ').split()
+        ids_list_vk = get_id_from_nickname(nickname_list_vk)
         mode = input('Для быстрой загрузки введите - "0", для выбора настроек загрузки введите - "1": ')
 
         while mode not in ['0', '1']:
